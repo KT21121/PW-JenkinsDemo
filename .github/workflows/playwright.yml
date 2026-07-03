@@ -1,27 +1,52 @@
-name: Playwright Tests
+name: Playwright Regression & Security Suite
+
+# 1. Disparadores (Triggers): Cuándo se va a ejecutar este pipeline
 on:
   push:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch: # Permite ejecutar el pipeline manualmente desde la web de GitHub
+
 jobs:
-  test:
-    timeout-minutes: 60
-    runs-on: ubuntu-latest
+  e2e-tests:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest # Ejecuta sobre servidores Linux limpios de GitHub
+
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
+    # Paso 1: Descargar el código de tu repositorio en la máquina virtual
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Paso 2: Configurar el entorno de Node.js e implementar caché
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
       with:
-        node-version: lts/*
+        node-version: 24
+        cache: 'npm' # 👈 Truco Senior: Guarda en caché node_modules para acelerar el pipeline
+
+    # Paso 3: Instalación limpia de dependencias
     - name: Install dependencies
       run: npm ci
-    - name: Install Playwright Browsers
+
+    # Paso 4: Descargar navegadores y dependencias del sistema operativo Linux
+    - name: Install Playwright Browsers & OS Deps
       run: npx playwright install --with-deps
-    - name: Run Playwright tests
+
+    # Paso 5: Ejecución del Framework inyectando secretos de forma segura
+    - name: Run Playwright Tests
+      env:
+        CI: 'true'
+        BASE_URL: ${{ secrets.BASE_URL }}
+        USER_NAME: ${{ secrets.USER_NAME }}
+        PASSWORD: ${{ secrets.PASSWORD }}
       run: npx playwright test
-    - uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
+
+    # Paso 6: Guardar y publicar el reporte HTML (Pase lo que pase)
+    - name: Upload Playwright Report
+      uses: actions/upload-artifact@v4
+      if: always() # 👈 Obligatorio para que se ejecute aunque los tests fallen
       with:
-        name: playwright-report
+        name: playwright-html-report
         path: playwright-report/
         retention-days: 30
