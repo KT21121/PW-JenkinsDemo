@@ -4,7 +4,7 @@ pipeline {
 
     // 2. Herramientas: Automatiza la preparación del entorno de Node.js
     tools {
-        nodejs 'NodeJS_20' // Este nombre debe coincidir con el configurado en tu Jenkins global
+        nodejs 'NodeJS24' // Este nombre debe coincidir con el configurado en tu Jenkins global
     }
 
     // 3. Variables de entorno globales para el Pipeline
