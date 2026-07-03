@@ -1,26 +1,26 @@
 pipeline {
-    // 1. Dónde se ejecuta: Le dice a Jenkins que use cualquier agente (esclavo) disponible
+    // Le dice a Jenkins que use cualquier agente (máquina esclava) disponible
     agent any
 
-    // 2. Herramientas: Automatiza la preparación del entorno de Node.js
+    // Automatiza la preparación del entorno de Node.js
     tools {
-        nodejs 'NodeJS24' // Este nombre debe coincidir con el configurado en tu Jenkins global
+        nodejs 'NodeJS_20' // Este nombre debe coincidir con el que configures en Jenkins
     }
 
-    // 3. Variables de entorno globales para el Pipeline
+    // Variables de entorno globales para la ejecución
     environment {
-        CI = 'true' // Le avisa a Playwright y a Node que estamos en un entorno de integración continua
+        CI = 'true' // Le avisa a Playwright que está corriendo en un servidor de integración continua
         BASE_URL = 'https://the-internet.herokuapp.com'
         
-        // Inyección segura de credenciales desde el "Credentials Store" de Jenkins
+        // Inyección segura de credenciales desde el almacén secreto de Jenkins
         USER_NAME = credentials('qa-env-username')
         PASSWORD  = credentials('qa-env-password')
     }
 
     stages {
-        stage('Limpieza y Clonado') {
+        stage('Limpieza de Espacio') {
             steps {
-                // Borra ejecuciones anteriores para garantizar que no haya basura retenida
+                // Borra ejecuciones previas para garantizar que no haya basura retenida
                 cleanWs()
             }
         }
@@ -28,34 +28,34 @@ pipeline {
         stage('Instalación de Dependencias') {
             steps {
                 echo '📦 Instalando dependencias del proyecto...'
-                // Usamos npm ci en lugar de npm install para entornos CI/CD
+                // npm ci es más rápido y estricto que npm install para entornos de CI/CD
                 sh 'npm ci'
             }
         }
 
         stage('Instalación de Navegadores') {
             steps {
-                echo '🌐 Descargando binarios de Playwright y dependencias del Sistema Operativo...'
-                // Este paso es CRUCIAL para que no falle en Linux
+                echo '🌐 Descargando navegadores y librerías del Sistema Operativo...'
+                // Crucial para entornos Linux (como servidores Jenkins o Docker)
                 sh 'npx playwright install --with-deps'
             }
         }
 
         stage('Ejecución de Pruebas') {
             steps {
-                echo '🚀 Corriendo el framework de automatización...'
-                // Ejecutamos los tests. 
+                echo '🚀 Corriendo la suite de pruebas funcionales...'
+                // Lanza los tests de forma automatizada
                 sh 'npx playwright test'
             }
         }
     }
 
-    // 4. Acciones Post-Ejecución: Pase lo que pase (éxito o fallo), esto se ejecuta
+    // Acciones que se ejecutan SIEMPRE, sin importar si los tests pasaron o fallaron
     post {
         always {
-            echo '📊 Publicando reportes y guardando evidencias...'
+            echo '📊 Publicando reportes en Jenkins...'
             
-            // Publica el reporte HTML nativo de Playwright directamente en la interfaz de Jenkins
+            // Publica el reporte HTML interactivo de Playwright directamente en Jenkins
             publishHTML([
                 allowMissing: false,
                 alwaysLinkToLastBuild: true,
@@ -63,10 +63,10 @@ pipeline {
                 reportDir: 'playwright-report',
                 reportFiles: 'index.html',
                 reportName: 'Playwright HTML Report',
-                reportTitles: 'Resultado de la Automatización'
+                reportTitles: 'Resultados de Automatización'
             ])
 
-            // Guarda evidencias físicas (videos, capturas, trazas) si algo falló
+            // Guarda las evidencias físicas (videos, capturas, trazas) si algo falló
             archiveArtifacts artifacts: 'test-results/**', allowEmptyArchive: true
         }
     }
